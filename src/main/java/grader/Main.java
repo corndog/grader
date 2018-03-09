@@ -7,19 +7,25 @@ class Main {
 		var x = "cat";
 		System.out.println("hi " + x);
 		var gradeMap = new HashMap<StudentCourse, Marks>();
-		var  spreadsheet = new SpreadSheet("CustomReport_1_01_copy.xls");
-		spreadsheet.marksFromCustomReport(gradeMap);
 
-		var keys = gradeMap.keySet();
+		var  markSheet = new SpreadSheet("CustomReport_1_01_copy.xls");
+		// populate grade map
+		markSheet.marksFromCustomReport(gradeMap);
 
-		for (var k : keys) {
-			System.out.print(k + " : ");
-			var vals = gradeMap.get(k).getMarks();
-			for (var v : vals) {
-				System.out.print(v + ", ");
-			}
-			System.out.println("\n");
-		}
+		// put final grades in
+		var resultSheet = new SpreadSheet("2017_1_5_R.xls");
+		resultSheet.writeFinalGrade(gradeMap);
+
+		// var keys = gradeMap.keySet();
+
+		// for (var k : keys) {
+		// 	System.out.print(k + " : ");
+		// 	var vals = gradeMap.get(k).getMarks();
+		// 	for (var v : vals) {
+		// 		System.out.print(v + ", ");
+		// 	}
+		// 	System.out.println("\n");
+		// }
 
 	
 	}
