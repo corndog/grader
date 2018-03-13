@@ -94,7 +94,6 @@ class SpreadSheet {
 				var grades = marks.get(key);
 				if (grades != null && grades.isComplete()) {
 					var markCell = row.getCell(markIndex);
-					System.out.println("attempting to write for " + key + " : " + grades.getFinalMark());
 					markCell.setCellValue(grades.getFinalMark());
 				}
 				else {
@@ -154,7 +153,9 @@ class SpreadSheet {
 
 					// expect only one row per student/course
 					if (studentIdCell != null && courseCell != null) {
-						var studentCourse = new StudentCourse(getStringValue(studentIdCell), getStringValue(courseCell));
+						var studentId = getStringValue(studentIdCell);
+						var course = getStringValue(courseCell);
+						var studentCourse = new StudentCourse(studentId, course);
 						if (! marks.containsKey(studentCourse)) {
 							marks.put(studentCourse, new Marks(2));
 						}

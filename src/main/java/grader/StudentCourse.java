@@ -4,11 +4,7 @@ class StudentCourse {
 	public final String studentId;
 	public final String course;
 
-	public  StudentCourse(String id, String crs) throws Exception {
-		if (id == null) 
-			throw new Exception("student id should not be null");
-		if (crs == null)
-			throw new Exception("course should not be null");
+	public  StudentCourse(String id, String crs) {
 		studentId = id;
 		course = crs;
 	}
@@ -16,8 +12,8 @@ class StudentCourse {
 	@Override
 	public boolean equals(Object other) {
 		return ((other instanceof StudentCourse) &&
-			(studentId == ((StudentCourse)other).studentId) &&
-			(course == ((StudentCourse)other).course));
+			(studentId.equals(((StudentCourse)other).studentId)) &&
+			(course.equals(((StudentCourse)other).course)));
 	}
 
 	@Override
