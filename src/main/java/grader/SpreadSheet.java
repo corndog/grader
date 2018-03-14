@@ -96,11 +96,7 @@ class SpreadSheet {
 					var grades = marks.get(key);
 					if (grades != null && grades.isComplete()) {
 						System.out.println("write grade for " + key);
-						var cell = row.getCell(markIndex);
-						if (cell == null) {
-							System.out.println("creating cell for Mark");
-							cell = row.createCell(markIndex);
-						}
+						var cell = Optional.ofNullable(row.getCell(markIndex)).orElse(row.createCell(markIndex));
 						cell.setCellValue(grades.getFinalMark());
 					}
 					else {
@@ -156,12 +152,6 @@ class SpreadSheet {
 					for (var markIx : markIndexes) {
 						getIntegerValue(row.getCell(markIx)).ifPresent(m -> grades.add(m));
 					}
-					
-					// var mark1 = getIntegerValue(row.getCell(mark1Index));
-					// mark1.ifPresent(m -> grades.add(m));
-				
-					// var mark2 = getIntegerValue(row.getCell(mark2Index));
-					// mark2.ifPresent(m -> grades.add(m));
 				}
 				else {
 					System.out.println("row missing studentId or course");
@@ -181,7 +171,6 @@ class SpreadSheet {
 			var sheet = workbook.getSheet("Grade_Data");
 
 			for  (var row : sheet) {
-
 				for (var cell: row) {
 
 					// seems to all be strings
