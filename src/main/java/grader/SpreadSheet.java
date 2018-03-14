@@ -4,6 +4,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.hssf.usermodel.*;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.Arrays;
 import java.io.*;
 
 // put our various functionality here
@@ -16,12 +17,12 @@ class SpreadSheet {
 	}
 
 
-	// TODO investigate Option in java
-	private String getStringValue(Cell cell) throws Exception {
-		String value = "";
+	// expect to find something but might be empty rows??? tbd
+	private Optional<String> getStringValue(Cell cell) throws Exception {
+		String value = null;
 		switch (cell.getCellType()) {
 			case Cell.CELL_TYPE_STRING: 
-				value = cell.getStringCellValue();
+				value = cell.getStringCellValue().trim();
 				break;
 			case Cell.CELL_TYPE_NUMERIC:
 				Double x = cell.getNumericCellValue();
@@ -30,10 +31,16 @@ class SpreadSheet {
 			default:
 				throw new Exception("Bad value when expecting string in cell");
 		}
-		return value.trim();
+		if (value == null || value.equals("")) {
+			System.out.println("bad string value processed: " + value);
+		}
+		return Optional.ofNullable(value);
 	}
 
 	private Optional<Integer> getIntegerValue(Cell cell) throws Exception {
+		if (cell == null) {
+			return Optional.empty();
+		}
 		Integer value = null;
 		try {
 			switch (cell.getCellType()) {
@@ -55,18 +62,16 @@ class SpreadSheet {
 		return Optional.ofNullable(value);
 	}
 
-	// Option??
-	private int getColumnIndex(String colName, Row row) {
-		int ix = -1;
+	// need to find something or we're screwed
+	private int getColumnIndex(String colName, Row row) throws Exception {
 		for (int i = 0; i < row.getLastCellNum(); i++) {
 			var cell = row.getCell(i);
 			var value = cell.getStringCellValue().trim();
 			if (value.equals(colName)) {
-				ix = i;
-				break;
+				return i;
 			}
 		}
-		return ix;
+		throw new Exception("failed to find column " + colName);
 	}
 
 
@@ -76,28 +81,34 @@ class SpreadSheet {
 			var inputFile = new FileInputStream(new File(fname));
 			var workbook = WorkbookFactory.create(inputFile);
 			var sheet = workbook.getSheet("Grade_Data");
-
-			// find index of "Mark" column
+			
 			var firstRow = sheet.getRow(0);
 			var markIndex = getColumnIndex("Mark", firstRow);
 			var studentIdIndex = getColumnIndex("StudentID", firstRow);
 			var courseIndex = getColumnIndex("Course", firstRow);
 
-			if (markIndex < 0 || studentIdIndex < 0 || courseIndex <0)
-				throw new Exception("Couldn't find Mark/StudentID/Course column");
-
 			for  (int i = 1; i < sheet.getLastRowNum(); i++) {
 				var row = sheet.getRow(i);
 				var studentId = getStringValue(row.getCell(studentIdIndex));
 				var course = getStringValue(row.getCell(courseIndex));
-				var key = new StudentCourse(studentId, course);
-				var grades = marks.get(key);
-				if (grades != null && grades.isComplete()) {
-					var markCell = row.getCell(markIndex);
-					markCell.setCellValue(grades.getFinalMark());
+				if (studentId.isPresent() && course.isPresent()) {
+					var key = new StudentCourse(studentId.get(), course.get());
+					var grades = marks.get(key);
+					if (grades != null && grades.isComplete()) {
+						System.out.println("write grade for " + key);
+						var cell = row.getCell(markIndex);
+						if (cell == null) {
+							System.out.println("creating cell for Mark");
+							cell = row.createCell(markIndex);
+						}
+						cell.setCellValue(grades.getFinalMark());
+					}
+					else {
+						System.out.println("grades missing or incomplete for student/course " + key);
+					}
 				}
 				else {
-					System.out.println("found nothing for " + key);
+					System.out.println("missing studentID or course");
 				}
 			}
 			inputFile.close();
@@ -112,70 +123,50 @@ class SpreadSheet {
 
 	// pass in the grade map
 	public void marksFromCustomReport(HashMap<StudentCourse, Marks> marks) {
-		// ok so we can look for the indexes of the rows we are interested int
-		int mark1Index = -1;
-		int mark2Index = -1;
-		int studentIdIndex = -1;
-		int courseIndex = -1;
-		int finalMarkIndex = -1; // maybe don't care?? add it anyway or double check???
 
 		try {
 			var inputFile = new java.io.File(fname);
 			var workbook = WorkbookFactory.create(new File(fname));
 			var sheet = workbook.getSheetAt(0);
+			
+			var firstRow = sheet.getRow(0);
+			var mark1Index = getColumnIndex("Mark1", firstRow); 
+			var mark2Index = getColumnIndex("Mark2", firstRow);
+			//var mark3Index = getColumnIndex("Mark3", firstRow); 
+			//var mark4Index = getColumnIndex("Mark4", firstRow);
+			var markIndexes = Arrays.asList(mark1Index, mark2Index); //, mark3Index, mark4Index);
+			var studentIdIndex = getColumnIndex("StudentID", firstRow);
+			var courseIndex = getColumnIndex("Course", firstRow);
+
 			for  (int i = 0; i < sheet.getLastRowNum(); i++) {
 				var row = sheet.getRow(i);
-				if (i == 0) { // figure cell indexes of columns of interest
-					for (int j = 0; j < row.getLastCellNum(); j++) {
-						var cell = row.getCell(j);
-						var value = cell.getStringCellValue().trim();
-						if (value.equals("Mark1")) 
-							mark1Index = j;
-						if (value.equals("Mark2"))
-							mark2Index = j;
-						if (value.equals("FinalMark"))
-							finalMarkIndex = j;
-						if (value.equals("StudentID"))
-							studentIdIndex = j;
-						if (value.equals("Course"))
-							courseIndex = j;
+					// figure course info and marks			
+				var studentId = getStringValue(row.getCell(studentIdIndex));
+				var course = getStringValue(row.getCell(courseIndex));
+				if (studentId.isPresent() && course.isPresent()) {
+					var studentCourse = new StudentCourse(studentId.get(), course.get());
+					if (! marks.containsKey(studentCourse)) {
+						marks.put(studentCourse, new Marks(2));
 					}
+					else {
+						System.out.println("Apparent duplicate row for student/course " + studentId.get() + "/" + course.get());
+					}
+					var grades = marks.get(studentCourse);
+
+					for (var markIx : markIndexes) {
+						getIntegerValue(row.getCell(markIx)).ifPresent(m -> grades.add(m));
+					}
+					
+					// var mark1 = getIntegerValue(row.getCell(mark1Index));
+					// mark1.ifPresent(m -> grades.add(m));
+				
+					// var mark2 = getIntegerValue(row.getCell(mark2Index));
+					// mark2.ifPresent(m -> grades.add(m));
 				}
 				else {
-					if (mark1Index < 0 || mark2Index < 0 || studentIdIndex < 0 || courseIndex < 0 || finalMarkIndex < 0)
-						throw new Exception("Didn't find columns for some of Mark1, Mark2, FinalMark, StudentID or Course");
-
-					// figure course info and marks
-					var studentIdCell = row.getCell(studentIdIndex);
-					var courseCell = row.getCell(courseIndex);
-					var mark1Cell = row.getCell(mark1Index);
-					var mark2Cell = row.getCell(mark2Index);
-
-					// expect only one row per student/course
-					if (studentIdCell != null && courseCell != null) {
-						var studentId = getStringValue(studentIdCell);
-						var course = getStringValue(courseCell);
-						var studentCourse = new StudentCourse(studentId, course);
-						if (! marks.containsKey(studentCourse)) {
-							marks.put(studentCourse, new Marks(2));
-						}
-						else {
-							System.out.println("Apparent duplicate row for student/course " + studentIdCell.getStringCellValue() + "/" + courseCell.getStringCellValue());
-						}
-						var grades = marks.get(studentCourse);
-						// TODO check for fuckery of these values
-						// might be empty strings or bs like "CR" instead of numbers.
-						// Get some flatMap action going here
-						if (mark1Cell != null) { // && !mark1Cell.getStringCellValue().trim().equals(""))
-							var mark1 = getIntegerValue(mark1Cell);
-							mark1.ifPresent(m -> grades.add(m));
-						}
-						if (mark2Cell != null) {// && !mark2Cell.getStringCellValue().trim().equals(""))
-							var mark2 = getIntegerValue(mark2Cell);
-							mark2.ifPresent(m -> grades.add(m));
-						}
-					}
+					System.out.println("row missing studentId or course");
 				}
+				
 			}
 			//workbook.close(); //???
 		}
