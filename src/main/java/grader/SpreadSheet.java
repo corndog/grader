@@ -13,7 +13,7 @@ class SpreadSheet {
 	private final String fname;
 
 	public SpreadSheet(String name) {
-		fname = "C:\\Users\\hugh\\java\\grader\\data\\" + name;
+		fname = name; //  "C:\\Users\\hugh\\java\\grader\\data\\" + name;
 	}
 
 
