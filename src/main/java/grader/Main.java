@@ -26,54 +26,38 @@ public class Main extends Application {
 		var root = new StackPane();
 
 		var fileChooser = new FileChooser();
-		fileChooser.setTitle("Input file");
+		fileChooser.setTitle("Choose file");
 
 		var closeButton = new Button();
 		closeButton.setText("Done! Close Me.");
-		closeButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				//System.out.println("Yarp");
-				System.exit(0);
-			}
-
+		closeButton.setOnAction((event) -> {
+			System.exit(0);
 		});	
 
 		var button2 = new Button();
 		button2.setText("Choose output file");
-		button2.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				//System.out.println("Yarp");
-				var file = fileChooser.showOpenDialog(primaryStage);
-				outputPath = file.getAbsolutePath();
-				System.out.println("output path " + outputPath + "\n input path " + inputPath);
-				populateData(inputPath, outputPath);
-				root.getChildren().remove(button2);
-				root.getChildren().add(closeButton);
-			}
-
+		button2.setOnAction((event) -> {
+			var file = fileChooser.showOpenDialog(primaryStage);
+			outputPath = file.getAbsolutePath();
+			//System.out.println("output path " + outputPath + "\n input path " + inputPath);
+			populateData(inputPath, outputPath);
+			root.getChildren().remove(button2);
+			root.getChildren().add(closeButton);
 		});	
 
 		var button1 = new Button();
 		button1.setText("Choose input file");
-		button1.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				//System.out.println("Yarp");
-				var file = fileChooser.showOpenDialog(primaryStage);
-				inputPath = file.getAbsolutePath();
-				System.out.println("input path " + inputPath);
-				root.getChildren().remove(button1);
-				root.getChildren().add(button2);
-			}
-
+		button1.setOnAction((event) -> {
+			var file = fileChooser.showOpenDialog(primaryStage);
+			inputPath = file.getAbsolutePath();
+			//System.out.println("input path " + inputPath);
+			root.getChildren().remove(button1);
+			root.getChildren().add(button2);
 		});	
-
 		
 		root.getChildren().add(button1);
 		
-		primaryStage.setScene(new Scene(root, 400, 320));
+		primaryStage.setScene(new Scene(root, 500, 400));
 		primaryStage.show();
 	}
 

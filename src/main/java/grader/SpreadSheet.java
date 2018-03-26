@@ -142,7 +142,7 @@ class SpreadSheet {
 				if (studentId.isPresent() && course.isPresent()) {
 					var studentCourse = new StudentCourse(studentId.get(), course.get());
 					if (! marks.containsKey(studentCourse)) {
-						marks.put(studentCourse, new Marks(2));
+						marks.put(studentCourse, new Marks(markIndexes.size()));
 					}
 					else {
 						System.out.println("Apparent duplicate row for student/course " + studentId.get() + "/" + course.get());
