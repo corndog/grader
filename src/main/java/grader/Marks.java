@@ -2,28 +2,26 @@ package grader;
 
 import java.util.ArrayList;
 
+// some simplistic checking I guess
+
 class Marks {
-	private final int requiredNumberOfMarks;
-	private final ArrayList<Integer> marks;
+	//private final int requiredNumberOfMarks;
+	public final ArrayList<Integer> marks;
 
-	public Marks(int numMarks) {
-		requiredNumberOfMarks = numMarks;
-		marks = new ArrayList<Integer>(); // should be 4 for our excercize...??
-	}
-
-	public void add(int mark) {
-		marks.add(mark);
+	public Marks() {
+		//requiredNumberOfMarks = numMarks;
+		marks = new ArrayList<Integer>(); 
 	}
 
 	public boolean isComplete() {
-		return marks.size() == requiredNumberOfMarks;
+		return marks.size() == 2 || marks.size() == 4;
+	}
+
+	public void add(Integer mark) {
+		marks.add(mark);
 	}
 
 	public int getFinalMark() {
-		return (int) Math.round(marks.stream().reduce(0, Integer::sum) / marks.size());
-	}
-
-	public ArrayList<Integer> getMarks() {
-		return marks;
+		return (int) Math.round((double) marks.stream().reduce(0, Integer::sum) / marks.size());
 	}
 }

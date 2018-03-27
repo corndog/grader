@@ -7,26 +7,32 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
-import javafx.stage.FileChooser;
+//import javafx.stage.FileChooser;
+import javafx.stage.DirectoryChooser;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import static java.util.stream.Collectors.toList;
+
+import java.io.*;
+import java.nio.file.*;
+
+// tasks
+// todo: skip writing to already marked cells...
 
 public class Main extends Application {
-		static String inputPath = "";
-		static String outputPath = "";
 
 	public static void main(String[] args) {
 		launch(args);
-
-		//final var x = 5;
-		//x = 9; yay
 	}
 
-	@Override public void start(Stage primaryStage) {
+	@Override 
+	public void start(Stage primaryStage) {
 		primaryStage.setTitle("Grader");
 		var root = new StackPane();
 
-		var fileChooser = new FileChooser();
-		fileChooser.setTitle("Choose file");
+		var dirChooser = new DirectoryChooser();
+		dirChooser.setTitle("Choose directory");
 
 		var closeButton = new Button();
 		closeButton.setText("Done! Close Me.");
@@ -34,25 +40,14 @@ public class Main extends Application {
 			System.exit(0);
 		});	
 
-		var button2 = new Button();
-		button2.setText("Choose output file");
-		button2.setOnAction((event) -> {
-			var file = fileChooser.showOpenDialog(primaryStage);
-			outputPath = file.getAbsolutePath();
-			//System.out.println("output path " + outputPath + "\n input path " + inputPath);
-			populateData(inputPath, outputPath);
-			root.getChildren().remove(button2);
-			root.getChildren().add(closeButton);
-		});	
-
 		var button1 = new Button();
-		button1.setText("Choose input file");
+		button1.setText("Choose data directory");
 		button1.setOnAction((event) -> {
-			var file = fileChooser.showOpenDialog(primaryStage);
-			inputPath = file.getAbsolutePath();
-			//System.out.println("input path " + inputPath);
+			var dir = dirChooser.showDialog(primaryStage);
+			var dirPath = dir.getAbsolutePath();
+			runGrader(dirPath);
 			root.getChildren().remove(button1);
-			root.getChildren().add(button2);
+			root.getChildren().add(closeButton);
 		});	
 		
 		root.getChildren().add(button1);
@@ -61,25 +56,27 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
+	public static void runGrader(String directory) {
 
-	// fetch string names 
-	public static void populateData(String inputFileName, String outputFileName) {
-
-		//var inputFileName = "CustomReport_1_01_copy.xls"; // fetch these from file dialog
-		//var outputFileName = "2017_1_5_R.xls";
-
+		List<String> files = getFileNames(directory);
 		var gradeMap = new HashMap<StudentCourse, Marks>();
-
-		readMarks(inputFileName, gradeMap);
-		// populate grade map
-		//markSheet.marksFromCustomReport(gradeMap);
-
-		// put final grades in
+		var outputFileName = files.stream().filter(s -> "5".equals(s.split("_")[2])).findFirst().get();
+		var inputFiles = files.stream().filter(s -> s != outputFileName).collect(toList());
+		for (var fname : inputFiles) {
+			if (fname.contains("CustomReport"))
+				readMarksFromCustomReport(fname, gradeMap);
+			else
+				readMarksFromPeriodFile(fname, gradeMap);
+		}
 		writeResults(outputFileName, gradeMap);
-		//resultSheet.writeFinalGrade(gradeMap);
 	}
 
-	public static void readMarks(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
+	public static void readMarksFromPeriodFile(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
+		var markSheet = new SpreadSheet(inputFileName);
+		markSheet.marksFromPeriodFile(gradeMap);
+	}
+
+	public static void readMarksFromCustomReport(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
 		var  markSheet = new SpreadSheet(inputFileName);
 		markSheet.marksFromCustomReport(gradeMap);
 	}
@@ -87,5 +84,18 @@ public class Main extends Application {
 	public static void writeResults(String outputFileName, HashMap<StudentCourse, Marks> gradeMap) {
 		var resultSheet = new SpreadSheet(outputFileName);
 		resultSheet.writeFinalGrade(gradeMap);
+	}
+
+	public static List<String> getFileNames(String directory) {
+		var files = new ArrayList<String>();
+		var dir = Paths.get(directory);
+		try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
+			for (var path : ds) {
+				files.add(path.toAbsolutePath().toString());
+			}
+		} catch (IOException ex) {
+			System.out.println("oops\n " + ex);
+		}
+		return files;
 	}
 }

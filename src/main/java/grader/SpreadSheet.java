@@ -3,9 +3,11 @@ package grader;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.hssf.usermodel.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.Arrays;
-import java.io.*;
+import static java.util.stream.Collectors.toList;
+import java.io.*; // nio ??
 
 // put our various functionality here
 // create a new one for each spreadsheet we wish to process
@@ -29,7 +31,7 @@ class SpreadSheet {
 				value = String.valueOf((int) Math.round(x));
 				break;
 			default:
-				throw new Exception("Bad value when expecting string in cell");
+				System.out.println("Bad cell when expecting string in cell " + cell.getCellType() + ", " + value);
 		}
 		if (value == null || value.equals("")) {
 			System.out.println("bad string value processed: " + value);
@@ -52,7 +54,7 @@ class SpreadSheet {
 					value = (int) Math.round(x);
 					break;
 				default:
-					throw new Exception("Bad value when expecting numeric cell value");
+					System.out.println("Bad call when expecting numeric cell value: " + cell.getCellType() + ", " + value);
 			}
 		}
 		catch (NumberFormatException ex) {
@@ -63,7 +65,7 @@ class SpreadSheet {
 	}
 
 	// need to find something or we're screwed
-	private int getColumnIndex(String colName, Row row) throws Exception {
+	private int getColumnIndex(String colName, Row row) throws IllegalArgumentException {
 		for (int i = 0; i < row.getLastCellNum(); i++) {
 			var cell = row.getCell(i);
 			var value = cell.getStringCellValue().trim();
@@ -71,7 +73,7 @@ class SpreadSheet {
 				return i;
 			}
 		}
-		throw new Exception("failed to find column " + colName);
+		throw new IllegalArgumentException("failed to find column " + colName);
 	}
 
 
@@ -87,7 +89,7 @@ class SpreadSheet {
 			var studentIdIndex = getColumnIndex("StudentID", firstRow);
 			var courseIndex = getColumnIndex("Course", firstRow);
 
-			for  (int i = 1; i < sheet.getLastRowNum(); i++) {
+			for  (int i = 1; i <= sheet.getLastRowNum(); i++) {
 				var row = sheet.getRow(i);
 				var studentId = getStringValue(row.getCell(studentIdIndex));
 				var course = getStringValue(row.getCell(courseIndex));
@@ -96,11 +98,16 @@ class SpreadSheet {
 					var grades = marks.get(key);
 					if (grades != null && grades.isComplete()) {
 						System.out.println("write grade for " + key);
-						var cell = Optional.ofNullable(row.getCell(markIndex)).orElse(row.createCell(markIndex));
+						//var cell = Optional.ofNullable(row.getCell(markIndex)).orElse(row.createCell(markIndex));
+						var cell = row.getCell(markIndex);
+						if (cell == null) {
+							System.out.println("creating cell");
+							cell = row.createCell(markIndex);
+						}
 						cell.setCellValue(grades.getFinalMark());
 					}
 					else {
-						System.out.println("grades missing or incomplete for student/course " + key);
+						System.out.println("grades missing or incomplete for student/course " + key + " : " + grades);
 					}
 				}
 				else {
@@ -117,78 +124,65 @@ class SpreadSheet {
 		}
 	}
 
-	// pass in the grade map
-	public void marksFromCustomReport(HashMap<StudentCourse, Marks> marks) {
-
+	private void marksFromColumnNames(Sheet sheet, List<String> markColumnNames, HashMap<StudentCourse, Marks> marks) {
 		try {
-			var inputFile = new java.io.File(fname);
-			var workbook = WorkbookFactory.create(new File(fname));
-			var sheet = workbook.getSheetAt(0);
-			
 			var firstRow = sheet.getRow(0);
-			var mark1Index = getColumnIndex("Mark1", firstRow); 
-			var mark2Index = getColumnIndex("Mark2", firstRow);
-			//var mark3Index = getColumnIndex("Mark3", firstRow); 
-			//var mark4Index = getColumnIndex("Mark4", firstRow);
-			var markIndexes = Arrays.asList(mark1Index, mark2Index); //, mark3Index, mark4Index);
 			var studentIdIndex = getColumnIndex("StudentID", firstRow);
 			var courseIndex = getColumnIndex("Course", firstRow);
-
-			for  (int i = 0; i < sheet.getLastRowNum(); i++) {
+			var markIndexes = markColumnNames.stream().map(colName -> getColumnIndex(colName, firstRow)).collect(toList());
+			var max = sheet.getLastRowNum();
+			for  (int i = 1; i <= max; i++) {
 				var row = sheet.getRow(i);
-					// figure course info and marks			
 				var studentId = getStringValue(row.getCell(studentIdIndex));
 				var course = getStringValue(row.getCell(courseIndex));
 				if (studentId.isPresent() && course.isPresent()) {
 					var studentCourse = new StudentCourse(studentId.get(), course.get());
 					if (! marks.containsKey(studentCourse)) {
-						marks.put(studentCourse, new Marks(markIndexes.size()));
+						marks.put(studentCourse, new Marks());
 					}
 					else {
-						System.out.println("Apparent duplicate row for student/course " + studentId.get() + "/" + course.get());
+						//System.out.println("Apparent duplicate row for student/course " + studentId.get() + "/" + course.get());
 					}
 					var grades = marks.get(studentCourse);
 
-					for (var markIx : markIndexes) {
-						getIntegerValue(row.getCell(markIx)).ifPresent(m -> grades.add(m));
+					for (var markIndex : markIndexes) {
+						getIntegerValue(row.getCell(markIndex)).ifPresent(m -> grades.add(m));
 					}
 				}
 				else {
 					System.out.println("row missing studentId or course");
 				}
-				
 			}
-			//workbook.close(); //???
+		} 
+		catch (IllegalArgumentException ex) {
+			System.out.println("file headers not named as expected, " + ex);
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (Exception ex) {
+			System.out.println("oh no " + ex);
 		}
 	}
-	
-	public void read() {
+
+	// pass in the grade map
+	public void marksFromPeriodFile(HashMap<StudentCourse, Marks> marks) {
 		try {
-			var workbook = WorkbookFactory.create(new java.io.File(fname));
+			var workbook = WorkbookFactory.create(new File(fname));
 			var sheet = workbook.getSheet("Grade_Data");
-
-			for  (var row : sheet) {
-				for (var cell: row) {
-
-					// seems to all be strings
-					switch (cell.getCellType()) {
-						case Cell.CELL_TYPE_STRING: 
-							System.out.println(cell.getStringCellValue());
-							break;
-						case Cell.CELL_TYPE_NUMERIC:
-							System.out.println(cell.getNumericCellValue());
-							break;
-						default:
-							System.out.println("OOPS");
-					}
-				}
-			}
-		}
-		catch (Exception e) {
+			var markColumnNames = Arrays.asList("Mark");
+			marksFromColumnNames(sheet, markColumnNames, marks);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}	
+
+	// pass in the grade map
+	public void marksFromCustomReport(HashMap<StudentCourse, Marks> marks) {
+		try {
+			var workbook = WorkbookFactory.create(new File(fname));
+			var sheet = workbook.getSheetAt(0);
+			var markColumnNames = Arrays.asList("Mark1", "Mark2");//, "Mark3", "Mark4");
+			marksFromColumnNames(sheet, markColumnNames, marks);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}	
 	}
 }
