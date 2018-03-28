@@ -29,22 +29,22 @@ public class Main extends Application {
 	@Override 
 	public void start(Stage primaryStage) {
 		primaryStage.setTitle("Grader");
-		var root = new StackPane();
+		StackPane root = new StackPane();
 
-		var dirChooser = new DirectoryChooser();
+		DirectoryChooser dirChooser = new DirectoryChooser();
 		dirChooser.setTitle("Choose directory");
 
-		var closeButton = new Button();
+		Button closeButton = new Button();
 		closeButton.setText("Done! Close Me.");
 		closeButton.setOnAction((event) -> {
 			System.exit(0);
 		});	
 
-		var button1 = new Button();
+		Button button1 = new Button();
 		button1.setText("Choose data directory");
 		button1.setOnAction((event) -> {
-			var dir = dirChooser.showDialog(primaryStage);
-			var dirPath = dir.getAbsolutePath();
+			File dir = dirChooser.showDialog(primaryStage);
+			String dirPath = dir.getAbsolutePath();
 			runGrader(dirPath);
 			root.getChildren().remove(button1);
 			root.getChildren().add(closeButton);
@@ -59,10 +59,10 @@ public class Main extends Application {
 	public static void runGrader(String directory) {
 
 		List<String> files = getFileNames(directory);
-		var gradeMap = new HashMap<StudentCourse, Marks>();
-		var outputFileName = files.stream().filter(s -> "5".equals(s.split("_")[2])).findFirst().get();
-		var inputFiles = files.stream().filter(s -> s != outputFileName).collect(toList());
-		for (var fname : inputFiles) {
+	    HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
+		String outputFileName = files.stream().filter(s -> "5".equals(s.split("_")[2])).findFirst().get();
+		List<String> inputFiles = files.stream().filter(s -> s != outputFileName).collect(toList());
+		for (String fname : inputFiles) {
 			if (fname.contains("CustomReport"))
 				readMarksFromCustomReport(fname, gradeMap);
 			else
@@ -72,25 +72,25 @@ public class Main extends Application {
 	}
 
 	public static void readMarksFromPeriodFile(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
-		var markSheet = new SpreadSheet(inputFileName);
+		SpreadSheet markSheet = new SpreadSheet(inputFileName);
 		markSheet.marksFromPeriodFile(gradeMap);
 	}
 
 	public static void readMarksFromCustomReport(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
-		var  markSheet = new SpreadSheet(inputFileName);
+		SpreadSheet  markSheet = new SpreadSheet(inputFileName);
 		markSheet.marksFromCustomReport(gradeMap);
 	}
 
 	public static void writeResults(String outputFileName, HashMap<StudentCourse, Marks> gradeMap) {
-		var resultSheet = new SpreadSheet(outputFileName);
+		SpreadSheet resultSheet = new SpreadSheet(outputFileName);
 		resultSheet.writeFinalGrade(gradeMap);
 	}
 
 	public static List<String> getFileNames(String directory) {
-		var files = new ArrayList<String>();
-		var dir = Paths.get(directory);
+		List<String> files = new ArrayList<String>();
+		Path dir = Paths.get(directory);
 		try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
-			for (var path : ds) {
+			for (Path path : ds) {
 				files.add(path.toAbsolutePath().toString());
 			}
 		} catch (IOException ex) {
