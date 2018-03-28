@@ -8,5 +8,5 @@ class Marks {
 
 	fun add(mark: Int): Boolean = marks.add(mark)
 
-	fun getFinalMark() : Int = kotlin.math.round(marks.sum().toDouble() / marks.size.toDouble()).toInt()
+	fun getFinalMark() : Int = java.lang.Math.round(marks.sum().toDouble() / marks.size).toInt() // kotlin.math.round is retarded
 }

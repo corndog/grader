@@ -16,7 +16,7 @@ class SpreadSheet(val fname: String) {
 			Cell.CELL_TYPE_STRING -> cell.getStringCellValue().trim()
 			Cell.CELL_TYPE_NUMERIC -> cell.getNumericCellValue().toInt().toString()
 			else -> {
-				print("Bad cell, of type ${cell.getCellType()} when expecting string value, in $cell")
+				println("Bad cell, of type ${cell.getCellType()} when expecting string value, in $cell")
 				null
 			}
 		}
@@ -27,12 +27,12 @@ class SpreadSheet(val fname: String) {
 				Cell.CELL_TYPE_STRING -> cell.getStringCellValue().trim().toInt()
 				Cell.CELL_TYPE_NUMERIC -> kotlin.math.round(cell.getNumericCellValue()).toInt()
 				else -> {
-					print("Bad cell, of type ${cell.getCellType()} when expecting numeric value, in $cell")
+					println("Bad cell, of type ${cell.getCellType()} when expecting numeric value, in $cell")
 					null
 				}
 			}
 		} catch (ex: NumberFormatException) {
-			print("Failed to make a number from ${cell.getStringCellValue()}")
+			println("Failed to make a number from ${cell.getStringCellValue()}")
 			null
 		}
 
@@ -68,11 +68,11 @@ class SpreadSheet(val fname: String) {
 					cell.setCellValue(grades.getFinalMark().toDouble())
 				}
 				else {
-					print("grades missing or incomplete for student/course $key")
+					println("grades missing or incomplete for student/course $key")
 				}
 			}
 			else {
-				System.out.println("missing studentID or course")
+				println("missing studentID or course")
 			}
 			inputFile.close()
 			val outputFile = FileOutputStream(File(fname))
@@ -108,7 +108,7 @@ class SpreadSheet(val fname: String) {
 				}
 			}
 			else {
-				System.out.println("row missing studentId or course")
+				println("row missing studentId or course")
 			}
 		}
 		//return Unit
