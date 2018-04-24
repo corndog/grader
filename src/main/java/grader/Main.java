@@ -56,7 +56,51 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
+	// ok we need to figure out another state
+	//
 	public static void runGrader(String directory) {
+		// figure if we have a bunch of files, 5 per 
+		List<String> files = getFileNames(directory);
+		Integer numOutputFiles = files.stream().filter(s -> "5".equals(s.split("_")[2])).collect(toList()).size();
+
+		if (numOutputFiles == 1) {
+			runGraderOneOutputFile(directory);
+		}
+		else if (numOutputFiles > 1) {
+			rundGraderFivePer(directory);
+		}
+		else {
+			System.out.println("Couldn't find an output file!");
+		}
+	}
+
+	// ok we have five files per
+	// probably easiest to run them in groups of five....
+	// just  find the output file and its input files and call it like below
+	public static void rundGraderFivePer(String directory) {
+		List<String> files = getFileNames(directory);
+		List<String> outputFiles = files.stream().filter(s -> "5".equals(s.split("_")[2])).collect(toList());
+
+		// file name eg 2017_1_5_Smith...
+		for (String outputFile : outputFiles) {
+			String[] nameParts = outputFile.split("_");
+			String matchPart = nameParts[3];
+			List<String> inputFiles = files.stream().filter(s -> !"5".equals(s.split("_")[2]) && matchPart.equals(s.split("_")[3])).collect(toList());
+			if (inputFiles.size() != 2) {
+				System.out.println("Found wrong number of input files: ${input.size} for ${matchPart}");
+			}
+			else {
+				HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
+				for (String fname : inputFiles) {
+					readMarksFromPeriodFile(fname, gradeMap);
+				}
+				writeResults(outputFile, gradeMap);
+			}
+			System.out.println("PROCESSED " + outputFile);
+		}
+	}
+
+	public static void runGraderOneOutputFile(String directory) {
 
 		List<String> files = getFileNames(directory);
 	    HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
