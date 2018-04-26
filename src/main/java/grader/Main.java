@@ -74,25 +74,43 @@ public class Main extends Application {
 		}
 	}
 
+	public static String tNameFromFileName(String fname) {
+		String[] nameParts = fname.split("_");
+		return nameParts[3].split("\\.")[0];
+	}
+
+	public static Integer numPart(String fname) {
+		String num = fname.split("_")[2];
+		return Integer.parseInt(num);
+	}
+
+	public static boolean isOutputFile(String fname) {
+		return 5 == numPart(fname);
+	}
+
 	// ok we have five files per
 	// probably easiest to run them in groups of five....
 	// just  find the output file and its input files and call it like below
 	public static void rundGraderFivePer(String directory) {
 		List<String> files = getFileNames(directory);
-		List<String> outputFiles = files.stream().filter(s -> "5".equals(s.split("_")[2])).collect(toList());
+		List<String> outputFiles = files.stream().filter(s -> isOutputFile(s)).collect(toList());
+		// Ok this doesn't work, since name part can change
+		// but studentId-course is unique per setting so we can just read everything then write everything and
+		// hopefully it lines pu
+		// but we might check names and see
 
 		// file name eg 2017_1_5_Smith...
 		for (String outputFile : outputFiles) {
-			String[] nameParts = outputFile.split("_");
-			String matchPart = nameParts[3];
-			List<String> inputFiles = files.stream().filter(s -> !"5".equals(s.split("_")[2]) && matchPart.equals(s.split("_")[3])).collect(toList());
-			if (inputFiles.size() != 2) {
+			String namePart = tNameFromFileName(outputFile);
+			System.out.println("NAME PART:  " + namePart);
+			List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s) && namePart.equals(tNameFromFileName(s))).collect(toList());
+			if (inputFiles.size() != 2) { // 4
 				System.out.println("Found wrong number of input files: ${input.size} for ${matchPart}");
 			}
 			else {
 				HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
 				for (String fname : inputFiles) {
-					readMarksFromPeriodFile(fname, gradeMap);
+					readMarksFromPeriodFile(fname, gradeMap, numPart(fname));
 				}
 				writeResults(outputFile, gradeMap);
 			}
@@ -104,20 +122,22 @@ public class Main extends Application {
 
 		List<String> files = getFileNames(directory);
 	    HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
-		String outputFileName = files.stream().filter(s -> "5".equals(s.split("_")[2])).findFirst().get();
+
+		String outputFileName = files.stream().filter(s -> 5 == numPart(s)).findFirst().get();
 		List<String> inputFiles = files.stream().filter(s -> s != outputFileName).collect(toList());
 		for (String fname : inputFiles) {
+			Integer np = numPart(fname);
 			if (fname.contains("CustomReport"))
 				readMarksFromCustomReport(fname, gradeMap);
 			else
-				readMarksFromPeriodFile(fname, gradeMap);
+				readMarksFromPeriodFile(fname, gradeMap, np);
 		}
 		writeResults(outputFileName, gradeMap);
 	}
 
-	public static void readMarksFromPeriodFile(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
+	public static void readMarksFromPeriodFile(String inputFileName, HashMap<StudentCourse, Marks> gradeMap, Integer term) {
 		SpreadSheet markSheet = new SpreadSheet(inputFileName);
-		markSheet.marksFromPeriodFile(gradeMap);
+		markSheet.marksFromPeriodFile(gradeMap, term);
 	}
 
 	public static void readMarksFromCustomReport(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {

@@ -114,7 +114,7 @@ class SpreadSheet(val fname: String) {
 		//return Unit
 	} 
 
-	public fun marksFromPeriodFile(marks: MutableMap<StudentCourse, Marks>): Unit {
+	public fun marksFromPeriodFile(marks: MutableMap<StudentCourse, Marks>, term: Int): Unit {
 		try {
 			val workbook = WorkbookFactory.create(File(fname))
 			val sheet = workbook.getSheet("Grade_Data")
