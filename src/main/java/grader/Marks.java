@@ -1,27 +1,55 @@
-// package grader;
+package grader;
 
-// import java.util.ArrayList;
+import java.util.ArrayList;
 
-// // some simplistic checking I guess
+// some simplistic checking I guess
 
-// class Marks {
-// 	//private final int requiredNumberOfMarks;
-// 	public final ArrayList<Integer> marks;
+class Marks {
+	public final Integer[] marks;
 
-// 	public Marks() {
-// 		//requiredNumberOfMarks = numMarks;
-// 		marks = new ArrayList<Integer>(); 
-// 	}
+	public Marks() {
+		marks = new Integer[4]; 
+	}
 
-// 	public boolean isComplete() {
-// 		return marks.size() == 2 || marks.size() == 4;
-// 	}
+	private boolean allFour() {
+		return marks[0] != null && marks[1] != null && marks[2] != null && marks[3] != null;
+	}
 
-// 	public void add(Integer mark) {
-// 		marks.add(mark);
-// 	}
+	private boolean firstTwo() {
+		return marks[0] != null && marks[1] != null && marks[2] == null && marks[3] == null;
+	}
 
-// 	public int getFinalMark() {
-// 		return (int) Math.round((double) marks.stream().reduce(0, Integer::sum) / marks.size());
-// 	}
-// }
+	private boolean lastTwo() {
+		return (marks[0] == null && marks[1] == null && marks[2] != null && marks[3] != null);
+	}	
+
+	public boolean isComplete() {
+		return allFour() || firstTwo() || lastTwo();
+
+	}
+
+	private Integer size() {
+		if (allFour())
+			return 4;
+		else if (firstTwo() || lastTwo())
+			return 2;
+		else
+			return 0;
+	}
+
+	// ix goind to be 1 - 4
+	public void add(Integer ix, Integer mark) {
+		marks[ix -1] = mark;
+	}
+
+	// should only call this after isComplete
+	public Integer getFinalMark() {
+		Integer sum = 0;
+		for (int i = 0; i < 4; i++) {
+			if (marks[i] != null)
+				sum += marks[i];
+		}
+		Double avg = sum.doubleValue() / size().doubleValue();
+		return (int) Math.round(avg);
+	}
+}

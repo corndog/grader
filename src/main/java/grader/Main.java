@@ -56,22 +56,23 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
-	// ok we need to figure out another state
-	//
+	// ok we need to figure out another use case:
+	// 1) we have a five files per class sequence, one per teaching period/quarter/term (4 of them), and a fifth one where the final grade (avg) goes
+	// 2) We have a custom report file with all four periods for all classes, and then the _5 output file to write the average in
 	public static void runGrader(String directory) {
 		// figure if we have a bunch of files, 5 per 
 		List<String> files = getFileNames(directory);
 		Integer numOutputFiles = files.stream().filter(s -> "5".equals(s.split("_")[2])).collect(toList()).size();
 
-		if (numOutputFiles == 1) {
-			runGraderOneOutputFile(directory);
-		}
-		else if (numOutputFiles > 1) {
-			rundGraderFivePer(directory);
-		}
-		else {
-			System.out.println("Couldn't find an output file!");
-		}
+		// if (numOutputFiles == 1) {
+		// 	runGraderOneOutputFile(directory);
+		// }
+		// else if (numOutputFiles > 1) {
+	 	rundGraderFivePer(directory);
+		// }
+		// else {
+		// 	System.out.println("Couldn't find an output file!");
+		// }
 	}
 
 	public static String tNameFromFileName(String fname) {
@@ -90,32 +91,25 @@ public class Main extends Application {
 
 	// ok we have five files per
 	// probably easiest to run them in groups of five....
-	// just  find the output file and its input files and call it like below
+	// just find the output file and its input files and call it like below
 	public static void rundGraderFivePer(String directory) {
 		List<String> files = getFileNames(directory);
 		List<String> outputFiles = files.stream().filter(s -> isOutputFile(s)).collect(toList());
-		// Ok this doesn't work, since name part can change
-		// but studentId-course is unique per setting so we can just read everything then write everything and
-		// hopefully it lines pu
+		List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s)).collect(toList());
+		HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
+		// StudentId-course is unique for our universe so we can just read everything then write everything and
+		// hopefully it lines up
 		// but we might check names and see
+		for (String fname : inputFiles) {
+			readMarksFromPeriodFile(fname, gradeMap, numPart(fname));
+		}
 
-		// file name eg 2017_1_5_Smith...
 		for (String outputFile : outputFiles) {
-			String namePart = tNameFromFileName(outputFile);
-			System.out.println("NAME PART:  " + namePart);
-			List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s) && namePart.equals(tNameFromFileName(s))).collect(toList());
-			if (inputFiles.size() != 2) { // 4
-				System.out.println("Found wrong number of input files: ${input.size} for ${matchPart}");
-			}
-			else {
-				HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
-				for (String fname : inputFiles) {
-					readMarksFromPeriodFile(fname, gradeMap, numPart(fname));
-				}
-				writeResults(outputFile, gradeMap);
-			}
+			writeResults(outputFile, gradeMap);
 			System.out.println("PROCESSED " + outputFile);
 		}
+		System.out.println("Done.");
+		System.out.println("Processed " + outputFiles.size() + " groups of data");
 	}
 
 	public static void runGraderOneOutputFile(String directory) {
