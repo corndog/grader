@@ -38,8 +38,14 @@ class Marks {
 	}
 
 	// ix goind to be 1 - 4
-	public void add(Integer ix, Integer mark) {
-		marks[ix -1] = mark;
+	public void add(Integer ix, Integer mark)  throws Exception {
+		Integer arrIx = ix -1;
+		if (marks[arrIx] == null) {
+			marks[ix -1] = mark;
+		}
+		else {
+			throw new Exception("non-unique grade found at: " + ix);
+		}
 	}
 
 	// should only call this after isComplete

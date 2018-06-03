@@ -101,12 +101,14 @@ public class Main extends Application {
 		// hopefully it lines up
 		// but we might check names and see
 		for (String fname : inputFiles) {
+			System.out.println("reading " + fname);
 			readMarksFromPeriodFile(fname, gradeMap, numPart(fname));
 		}
 
-		for (String outputFile : outputFiles) {
-			writeResults(outputFile, gradeMap);
-			System.out.println("PROCESSED " + outputFile);
+		for (String fname : outputFiles) {
+			System.out.println("writing to " + fname);
+			writeResults(fname, gradeMap);
+			System.out.println("PROCESSED " + fname);
 		}
 		System.out.println("Done.");
 		System.out.println("Processed " + outputFiles.size() + " groups of data");

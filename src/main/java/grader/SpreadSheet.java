@@ -125,7 +125,7 @@ class SpreadSheet {
 	}
 
 	// ok we have two scenarios
-	private void marksFromColumnNames(Sheet sheet, List<String> markColumnNames, HashMap<StudentCourse, Marks> marks) {
+	private void marksFromColumnNames(Sheet sheet, List<String> markColumnNames, HashMap<StudentCourse, Marks> marks, Integer term) {
 		try {
 			Row firstRow = sheet.getRow(0);
 			Integer studentIdIndex = getColumnIndex("StudentID", firstRow);
@@ -147,13 +147,20 @@ class SpreadSheet {
 					Marks grades = marks.get(studentCourse);
 
 					// TODO ok tweak this since we are going to assume Mark1,Mark2,Mark3,Mark4 ....
-					int j = 0; // should be
+					//int j = 0; // should be
 					for (Integer markIndex : markIndexes) {
 						Integer grade = getIntegerValue(row.getCell(markIndex));
 						if (grade != null) {
-							grades.add(j, grade);
+							try {
+								grades.add(term, grade);
+							}
+							catch (Exception e) {
+								System.out.println(e);
+								System.out.println("\nError adding grade for student/course/term " + studentCourse + ", " + term);
+								throw e;
+							}
 						}
-						j += 1;
+						//j += 1;
 					}
 				}
 				else {
@@ -215,7 +222,7 @@ class SpreadSheet {
 			Workbook workbook = WorkbookFactory.create(new File(fname));
 			Sheet sheet = workbook.getSheet("Grade_Data");
 			List<String> markColumnNames = Arrays.asList("Mark");
-			marksFromColumnNames(sheet, markColumnNames, marks);
+			marksFromColumnNames(sheet, markColumnNames, marks, term);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -227,7 +234,7 @@ class SpreadSheet {
 			Workbook workbook = WorkbookFactory.create(new File(fname));
 			Sheet sheet = workbook.getSheetAt(0);
 			List<String> markColumnNames = Arrays.asList("Mark1", "Mark2");//, "Mark3", "Mark4");
-			marksFromColumnNames(sheet, markColumnNames, marks);
+			marksFromColumnNames(sheet, markColumnNames, marks, 0); // OOPPS FIX
 		} catch (Exception e) {
 			e.printStackTrace();
 		}	
