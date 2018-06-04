@@ -8,7 +8,7 @@ class Marks {
 	public final Integer[] marks;
 
 	public Marks() {
-		marks = new Integer[4]; 
+		marks = new Integer[4];
 	}
 
 	private boolean allFour() {
@@ -37,11 +37,9 @@ class Marks {
 			return 0;
 	}
 
-	// ix goind to be 1 - 4
 	public void add(Integer ix, Integer mark)  throws Exception {
-		Integer arrIx = ix -1;
-		if (marks[arrIx] == null) {
-			marks[ix -1] = mark;
+		if (marks[ix] == null) {
+			marks[ix] = mark;
 		}
 		else {
 			throw new Exception("non-unique grade found at: " + ix);

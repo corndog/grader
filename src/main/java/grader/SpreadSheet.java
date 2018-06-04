@@ -7,17 +7,39 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Arrays;
 import static java.util.stream.Collectors.toList;
-import java.io.*; // nio ??
+import java.io.*;
 
 // put our various functionality here
 // create a new one for each spreadsheet we wish to process
 class SpreadSheet {
+	Sheet sheet; // only one will be of interest
 	private final String fname;
+	private FileInputStream inputFile;
+	private Workbook workbook;
+	private Boolean isCustomReport; // ugh
+	// anything not customreport
+	private Integer term = null;
 
+	// for custom report
 	public SpreadSheet(String name) {
 		fname = name; //  "C:\\Users\\hugh\\java\\grader\\data\\" + name;
+		isCustomReport = true;
+		try {
+			inputFile = new FileInputStream(new File(fname));
+			workbook = WorkbookFactory.create(inputFile);
+		}
+		catch (Exception ex) {
+			System.out.println("Error opening spreadsheet: " + ex);
+			System.exit(1);
+		}
 	}
 
+	// single term or final result file
+	public SpreadSheet(String name, Integer trm) {
+		this(name);
+		isCustomReport = false;
+		term = trm;
+	}	
 
 	// expect to find something but might be empty rows??? tbd
 	private Optional<String> getStringValue(Cell cell) throws Exception {
@@ -78,12 +100,8 @@ class SpreadSheet {
 
 
 	public void writeFinalGrade(HashMap<StudentCourse, Marks> marks) {
-		// pass in the ___5 file
 		try {
-			FileInputStream inputFile = new FileInputStream(new File(fname));
-			Workbook workbook = WorkbookFactory.create(inputFile);
 			Sheet sheet = workbook.getSheet("Grade_Data");
-			
 			Row firstRow = sheet.getRow(0);
 			Integer markIndex = getColumnIndex("Mark", firstRow);
 			Integer studentIdIndex = getColumnIndex("StudentID", firstRow);
@@ -97,17 +115,16 @@ class SpreadSheet {
 					StudentCourse key = new StudentCourse(studentId.get(), course.get());
 					Marks grades = marks.get(key);
 					if (grades != null && grades.isComplete()) {
-						System.out.println("write grade for " + key);
-						//var cell = Optional.ofNullable(row.getCell(markIndex)).orElse(row.createCell(markIndex));
+						//System.out.println("write grade for " + key);
 						Cell cell = row.getCell(markIndex);
 						if (cell == null) {
-							System.out.println("creating cell");
+							System.out.println("creating cell for " + key);
 							cell = row.createCell(markIndex);
 						}
 						cell.setCellValue(grades.getFinalMark());
 					}
 					else {
-						System.out.println("grades missing or incomplete for student/course " + key + " : " + grades);
+						//System.out.println("grades missing or incomplete for student/course " + key + " : " + grades);
 					}
 				}
 				else {
@@ -124,13 +141,21 @@ class SpreadSheet {
 		}
 	}
 
-	// ok we have two scenarios
-	private void marksFromColumnNames(Sheet sheet, List<String> markColumnNames, HashMap<StudentCourse, Marks> marks, Integer term) {
+	
+	private void readMarks(Sheet sheet,  HashMap<StudentCourse, Marks> marks) {
+		List<Integer> markIndexes = null;
+		Integer markIndex = null;
 		try {
 			Row firstRow = sheet.getRow(0);
+			if (isCustomReport) {
+				List<String> markColumnNames = Arrays.asList("Mark1", "Mark2", "Mark3", "Mark4");
+				markIndexes = markColumnNames.stream().map(colName -> getColumnIndex(colName, firstRow)).collect(toList());
+			}
+			else {
+				markIndex = getColumnIndex("Mark", firstRow);
+			}
 			Integer studentIdIndex = getColumnIndex("StudentID", firstRow);
 			Integer courseIndex = getColumnIndex("Course", firstRow);
-			List<Integer> markIndexes = markColumnNames.stream().map(colName -> getColumnIndex(colName, firstRow)).collect(toList());
 			Integer max = sheet.getLastRowNum();
 			for  (int i = 1; i <= max; i++) {
 				Row row = sheet.getRow(i);
@@ -146,21 +171,34 @@ class SpreadSheet {
 					}
 					Marks grades = marks.get(studentCourse);
 
-					// TODO ok tweak this since we are going to assume Mark1,Mark2,Mark3,Mark4 ....
-					//int j = 0; // should be
-					for (Integer markIndex : markIndexes) {
+					// Either we're reading a custom report, or a single term file
+					if (isCustomReport) {
+						for (Integer ix : markIndexes) {
+							Integer grade = getIntegerValue(row.getCell(ix));
+							if (grade != null) {
+								try {
+									grades.add(markIndex, grade);
+								}
+								catch (Exception e) {
+									System.out.println(e);
+									System.out.println("\nError adding grade for student/course/term " + studentCourse + ", " + term);
+									System.exit(1); // really stop
+								}
+							}
+						}
+					}
+					else { // single term file
 						Integer grade = getIntegerValue(row.getCell(markIndex));
 						if (grade != null) {
 							try {
-								grades.add(term, grade);
+								grades.add(term-1, grade);
 							}
 							catch (Exception e) {
 								System.out.println(e);
 								System.out.println("\nError adding grade for student/course/term " + studentCourse + ", " + term);
-								throw e;
+								System.exit(1); // really stop
 							}
 						}
-						//j += 1;
 					}
 				}
 				else {
@@ -176,67 +214,18 @@ class SpreadSheet {
 		}
 	}
 
-	//
-	private void marksFromMarkColumn(Sheet sheet, Integer term, HashMap<StudentCourse, Marks> marks) {
+	public void readMarksFromFile(HashMap<StudentCourse, Marks> marks) {
+		Sheet sheet;
 		try {
-			Row firstRow = sheet.getRow(0);
-			Integer studentIdIndex = getColumnIndex("StudentID", firstRow);
-			Integer courseIndex = getColumnIndex("Course", firstRow);
-			Integer markIndex = getColumnIndex("Mark", firstRow);
-			Integer max = sheet.getLastRowNum();
-			for  (int i = 1; i <= max; i++) {
-				Row row = sheet.getRow(i);
-				Optional<String> studentId = getStringValue(row.getCell(studentIdIndex));
-				Optional<String> course = getStringValue(row.getCell(courseIndex));
-				if (studentId.isPresent() && course.isPresent()) {
-					StudentCourse studentCourse = new StudentCourse(studentId.get(), course.get());
-					if (! marks.containsKey(studentCourse)) {
-						marks.put(studentCourse, new Marks());
-					}
-					else {
-						//System.out.println("Apparent duplicate row for student/course " + studentId.get() + "/" + course.get());
-					}
-					Marks grades = marks.get(studentCourse);
-					Integer grade = getIntegerValue(row.getCell(markIndex));
-					if (grade != null) {
-						grades.add(term, grade);
-					}
-				}
-				else {
-					System.out.println("row missing studentId or course");
-				}
+			if (isCustomReport) {
+				sheet = workbook.getSheetAt(0);
 			}
-		} 
-		catch (IllegalArgumentException ex) {
-			System.out.println("file headers not named as expected, " + ex);
-		}
-		catch (Exception ex) {
-			System.out.println("oh no " + ex);
-		}
-	}
-
-
-	// pass in the grade map
-	public void marksFromPeriodFile(HashMap<StudentCourse, Marks> marks, Integer term) {
-		try {
-			Workbook workbook = WorkbookFactory.create(new File(fname));
-			Sheet sheet = workbook.getSheet("Grade_Data");
-			List<String> markColumnNames = Arrays.asList("Mark");
-			marksFromColumnNames(sheet, markColumnNames, marks, term);
+			else {
+				sheet = workbook.getSheet("Grade_Data");
+			}
+			readMarks(sheet, marks);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}	
-
-	// pass in the grade map
-	public void marksFromCustomReport(HashMap<StudentCourse, Marks> marks) {
-		try {
-			Workbook workbook = WorkbookFactory.create(new File(fname));
-			Sheet sheet = workbook.getSheetAt(0);
-			List<String> markColumnNames = Arrays.asList("Mark1", "Mark2");//, "Mark3", "Mark4");
-			marksFromColumnNames(sheet, markColumnNames, marks, 0); // OOPPS FIX
-		} catch (Exception e) {
-			e.printStackTrace();
-		}	
 	}
 }

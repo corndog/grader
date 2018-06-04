@@ -11,6 +11,7 @@ import javafx.stage.Stage;
 import javafx.stage.DirectoryChooser;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.ArrayList;
 import static java.util.stream.Collectors.toList;
 
@@ -45,7 +46,13 @@ public class Main extends Application {
 		button1.setOnAction((event) -> {
 			File dir = dirChooser.showDialog(primaryStage);
 			String dirPath = dir.getAbsolutePath();
-			runGrader(dirPath);
+			try {
+				runGrader(dirPath);
+			}
+			catch (Exception ex) {
+				System.out.println("Failure running grader: " + ex);
+				System.exit(1);
+			}
 			root.getChildren().remove(button1);
 			root.getChildren().add(closeButton);
 		});	
@@ -56,31 +63,51 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
-	// ok we need to figure out another use case:
-	// 1) we have a five files per class sequence, one per teaching period/quarter/term (4 of them), and a fifth one where the final grade (avg) goes
-	// 2) We have a custom report file with all four periods for all classes, and then the _5 output file to write the average in
-	public static void runGrader(String directory) {
-		// figure if we have a bunch of files, 5 per 
+	// ok we need to figure out use case:
+	// 1) Input grades divided up by class: four files per teacher
+	// or
+	// 2) We have a custom report file with all four periods for all classes,
+	// --> In either case we have an arbitrary number of _5 files in which we write the results
+	public static void runGrader(String directory) throws FileNotFoundException, IOException {
+		HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
 		List<String> files = getFileNames(directory);
-		Integer numOutputFiles = files.stream().filter(s -> "5".equals(s.split("_")[2])).collect(toList()).size();
+		List<String> outputFiles = files.stream().filter(s -> isOutputFile(s)).collect(toList());
+		Optional<String> customReportFile = findCustomReportFile(files);
 
-		// if (numOutputFiles == 1) {
-		// 	runGraderOneOutputFile(directory);
-		// }
-		// else if (numOutputFiles > 1) {
-	 	rundGraderFivePer(directory);
-		// }
-		// else {
-		// 	System.out.println("Couldn't find an output file!");
-		// }
+		if (customReportFile.isPresent()) {
+			System.out.println("Reading grades from custom report file");
+			SpreadSheet  markSheet = new SpreadSheet(customReportFile.get());
+			markSheet.readMarksFromFile(gradeMap);
+		}
+		else {
+			List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s)).collect(toList());
+			for (String fname : inputFiles) {
+				System.out.println("reading " + fname);
+				SpreadSheet markSheet = new SpreadSheet(fname, numPart(fname));
+				markSheet.readMarksFromFile(gradeMap);
+			}
+		}
+
+		// write whatever grades we loaded to our output file(s)
+		for (String fname : outputFiles) {
+			System.out.println("writing to " + fname);
+			//writeResults(fname, gradeMap);
+			SpreadSheet resultSheet = new SpreadSheet(fname, numPart(fname));
+			resultSheet.writeFinalGrade(gradeMap);
+			System.out.println("PROCESSED " + fname);
+		}
+		System.out.println("Done.");
+		System.out.println("Processed " + outputFiles.size() + " groups of data");
 	}
 
-	public static String tNameFromFileName(String fname) {
-		String[] nameParts = fname.split("_");
-		return nameParts[3].split("\\.")[0];
+	public static Optional<String> findCustomReportFile(List<String> files) {
+		return files.stream().filter(s -> s.contains("CustomReport")).findFirst();
 	}
 
+	// passing around full file path in names, probably should fix that/this part
+	// so we can have an underscore in temp directory!!!!
 	public static Integer numPart(String fname) {
+		//System.out.println("parsing: " + fname);
 		String num = fname.split("_")[2];
 		return Integer.parseInt(num);
 	}
@@ -89,63 +116,7 @@ public class Main extends Application {
 		return 5 == numPart(fname);
 	}
 
-	// ok we have five files per
-	// probably easiest to run them in groups of five....
-	// just find the output file and its input files and call it like below
-	public static void rundGraderFivePer(String directory) {
-		List<String> files = getFileNames(directory);
-		List<String> outputFiles = files.stream().filter(s -> isOutputFile(s)).collect(toList());
-		List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s)).collect(toList());
-		HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
-		// StudentId-course is unique for our universe so we can just read everything then write everything and
-		// hopefully it lines up
-		// but we might check names and see
-		for (String fname : inputFiles) {
-			System.out.println("reading " + fname);
-			readMarksFromPeriodFile(fname, gradeMap, numPart(fname));
-		}
-
-		for (String fname : outputFiles) {
-			System.out.println("writing to " + fname);
-			writeResults(fname, gradeMap);
-			System.out.println("PROCESSED " + fname);
-		}
-		System.out.println("Done.");
-		System.out.println("Processed " + outputFiles.size() + " groups of data");
-	}
-
-	public static void runGraderOneOutputFile(String directory) {
-
-		List<String> files = getFileNames(directory);
-	    HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
-
-		String outputFileName = files.stream().filter(s -> 5 == numPart(s)).findFirst().get();
-		List<String> inputFiles = files.stream().filter(s -> s != outputFileName).collect(toList());
-		for (String fname : inputFiles) {
-			Integer np = numPart(fname);
-			if (fname.contains("CustomReport"))
-				readMarksFromCustomReport(fname, gradeMap);
-			else
-				readMarksFromPeriodFile(fname, gradeMap, np);
-		}
-		writeResults(outputFileName, gradeMap);
-	}
-
-	public static void readMarksFromPeriodFile(String inputFileName, HashMap<StudentCourse, Marks> gradeMap, Integer term) {
-		SpreadSheet markSheet = new SpreadSheet(inputFileName);
-		markSheet.marksFromPeriodFile(gradeMap, term);
-	}
-
-	public static void readMarksFromCustomReport(String inputFileName, HashMap<StudentCourse, Marks> gradeMap) {
-		SpreadSheet  markSheet = new SpreadSheet(inputFileName);
-		markSheet.marksFromCustomReport(gradeMap);
-	}
-
-	public static void writeResults(String outputFileName, HashMap<StudentCourse, Marks> gradeMap) {
-		SpreadSheet resultSheet = new SpreadSheet(outputFileName);
-		resultSheet.writeFinalGrade(gradeMap);
-	}
-
+	// filenames with complete path
 	public static List<String> getFileNames(String directory) {
 		List<String> files = new ArrayList<String>();
 		Path dir = Paths.get(directory);
