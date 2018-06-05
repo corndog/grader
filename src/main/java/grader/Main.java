@@ -63,66 +63,62 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
-	// ok we need to figure out use case:
-	// 1) Input grades divided up by class: four files per teacher
-	// or
-	// 2) We have a custom report file with all four periods for all classes,
-	// --> In either case we have an arbitrary number of _5 files in which we write the results
+	// latest, we could have either a CustomReport, with 3 (or maybe 4) columns
+	// and if 3, then a term_4 sheet as well for everyone
+	// and the usual output file_5 files
+	// so we read all possible input files first, then put the results in the output files
 	public static void runGrader(String directory) throws FileNotFoundException, IOException {
 		HashMap<StudentCourse, Marks> gradeMap = new HashMap<>();
-		List<String> files = getFileNames(directory);
-		List<String> outputFiles = files.stream().filter(s -> isOutputFile(s)).collect(toList());
-		Optional<String> customReportFile = findCustomReportFile(files);
+		List<Path> paths = getFileNames(directory);
+		List<Path> inputFiles = paths.stream().filter(p -> !isOutputFile(p)).collect(toList());
+		List<Path> outputFiles = paths.stream().filter(p -> isOutputFile(p)).collect(toList());
 
-		if (customReportFile.isPresent()) {
-			System.out.println("Reading grades from custom report file");
-			SpreadSheet  markSheet = new SpreadSheet(customReportFile.get());
-			markSheet.readMarksFromFile(gradeMap);
-		}
-		else {
-			List<String> inputFiles = files.stream().filter(s -> !isOutputFile(s)).collect(toList());
-			for (String fname : inputFiles) {
-				System.out.println("reading " + fname);
-				SpreadSheet markSheet = new SpreadSheet(fname, numPart(fname));
-				markSheet.readMarksFromFile(gradeMap);
+		for (Path path : inputFiles) {
+			System.out.println("Reading grades from " + path.getFileName().toString());
+			SpreadSheet  markSheet = null;
+			if (isCustomReportFile(path)){
+				markSheet = new SpreadSheet(path);
 			}
+			else {
+				markSheet = new SpreadSheet(path, numPart(path));
+			}
+			markSheet.readMarksFromFile(gradeMap);
 		}
 
 		// write whatever grades we loaded to our output file(s)
-		for (String fname : outputFiles) {
-			System.out.println("writing to " + fname);
+		for (Path path : outputFiles) {
+			System.out.println("writing to " + path.getFileName().toString());
 			//writeResults(fname, gradeMap);
-			SpreadSheet resultSheet = new SpreadSheet(fname, numPart(fname));
+			SpreadSheet resultSheet = new SpreadSheet(path, numPart(path));
 			resultSheet.writeFinalGrade(gradeMap);
-			System.out.println("PROCESSED " + fname);
+			System.out.println("PROCESSED " + path.getFileName().toString());
 		}
 		System.out.println("Done.");
 		System.out.println("Processed " + outputFiles.size() + " groups of data");
 	}
 
-	public static Optional<String> findCustomReportFile(List<String> files) {
-		return files.stream().filter(s -> s.contains("CustomReport")).findFirst();
+	public static Boolean isCustomReportFile(Path path) {
+		return path.getFileName().toString().contains("CustomReport");
 	}
 
 	// passing around full file path in names, probably should fix that/this part
 	// so we can have an underscore in temp directory!!!!
-	public static Integer numPart(String fname) {
+	public static Integer numPart(Path path) {
 		//System.out.println("parsing: " + fname);
-		String num = fname.split("_")[2];
+		String num = path.getFileName().toString().split("_")[2];
 		return Integer.parseInt(num);
 	}
 
-	public static boolean isOutputFile(String fname) {
-		return 5 == numPart(fname);
+	public static boolean isOutputFile(Path path) {
+		return 5 == numPart(path);
 	}
 
-	// filenames with complete path
-	public static List<String> getFileNames(String directory) {
-		List<String> files = new ArrayList<String>();
+	public static List<Path> getFileNames(String directory) {
+		List<Path> files = new ArrayList<Path>();
 		Path dir = Paths.get(directory);
 		try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
 			for (Path path : ds) {
-				files.add(path.toAbsolutePath().toString());
+				files.add(path);
 			}
 		} catch (IOException ex) {
 			System.out.println("oops\n " + ex);

@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Arrays;
 import static java.util.stream.Collectors.toList;
 import java.io.*;
+import java.nio.file.*;
 
 // put our various functionality here
 // create a new one for each spreadsheet we wish to process
@@ -21,8 +22,8 @@ class SpreadSheet {
 	private Integer term = null;
 
 	// for custom report
-	public SpreadSheet(String name) {
-		fname = name; //  "C:\\Users\\hugh\\java\\grader\\data\\" + name;
+	public SpreadSheet(Path path) {
+		fname = path.toAbsolutePath().toString(); //  "C:\\Users\\hugh\\java\\grader\\data\\" + name;
 		isCustomReport = true;
 		try {
 			inputFile = new FileInputStream(new File(fname));
@@ -35,7 +36,7 @@ class SpreadSheet {
 	}
 
 	// single term or final result file
-	public SpreadSheet(String name, Integer trm) {
+	public SpreadSheet(Path name, Integer trm) {
 		this(name);
 		isCustomReport = false;
 		term = trm;
@@ -148,7 +149,8 @@ class SpreadSheet {
 		try {
 			Row firstRow = sheet.getRow(0);
 			if (isCustomReport) {
-				List<String> markColumnNames = Arrays.asList("Mark1", "Mark2", "Mark3", "Mark4");
+				// NOTE probably need to adjust this each time!!!
+				List<String> markColumnNames = Arrays.asList("Mark1", "Mark2", "Mark3");//, "Mark4");
 				markIndexes = markColumnNames.stream().map(colName -> getColumnIndex(colName, firstRow)).collect(toList());
 			}
 			else {
@@ -177,7 +179,7 @@ class SpreadSheet {
 							Integer grade = getIntegerValue(row.getCell(ix));
 							if (grade != null) {
 								try {
-									grades.add(markIndex, grade);
+									grades.add(ix, grade);
 								}
 								catch (Exception e) {
 									System.out.println(e);
