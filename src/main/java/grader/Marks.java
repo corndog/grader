@@ -41,6 +41,9 @@ class Marks {
 		if (marks[ix] == null) {
 			marks[ix] = mark;
 		}
+		else if (marks[ix] == mark) {
+			System.out.println("dupe");
+		}
 		else {
 			throw new Exception("non-unique grade found at: " + ix);
 		}

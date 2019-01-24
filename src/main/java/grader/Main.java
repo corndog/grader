@@ -74,12 +74,13 @@ public class Main extends Application {
 		List<Path> outputFiles = paths.stream().filter(p -> isOutputFile(p)).collect(toList());
 
 		for (Path path : inputFiles) {
-			System.out.println("Reading grades from " + path.getFileName().toString());
 			SpreadSheet  markSheet = null;
 			if (isCustomReportFile(path)){
+				System.out.println("Reading grades from custom report " + path.getFileName().toString());
 				markSheet = new SpreadSheet(path);
 			}
 			else {
+				System.out.println("Reading grades from " + path.getFileName().toString());
 				markSheet = new SpreadSheet(path, numPart(path));
 			}
 			markSheet.readMarksFromFile(gradeMap);
@@ -88,7 +89,6 @@ public class Main extends Application {
 		// write whatever grades we loaded to our output file(s)
 		for (Path path : outputFiles) {
 			System.out.println("writing to " + path.getFileName().toString());
-			//writeResults(fname, gradeMap);
 			SpreadSheet resultSheet = new SpreadSheet(path, numPart(path));
 			resultSheet.writeFinalGrade(gradeMap);
 			System.out.println("PROCESSED " + path.getFileName().toString());
@@ -104,13 +104,13 @@ public class Main extends Application {
 	// passing around full file path in names, probably should fix that/this part
 	// so we can have an underscore in temp directory!!!!
 	public static Integer numPart(Path path) {
-		//System.out.println("parsing: " + fname);
+		System.out.println("parsing: " + path);
 		String num = path.getFileName().toString().split("_")[2];
 		return Integer.parseInt(num);
 	}
 
 	public static boolean isOutputFile(Path path) {
-		return 5 == numPart(path);
+		return !isCustomReportFile(path) && 5 == numPart(path);
 	}
 
 	public static List<Path> getFileNames(String directory) {

@@ -77,7 +77,7 @@ class SpreadSheet {
 					value = (int) Math.round(x);
 					break;
 				default:
-					System.out.println("Bad call when expecting numeric cell value: " + cell.getCellType() + ", " + value);
+					System.out.println("Bad cell when expecting numeric cell value: " + cell.getCellType() + ", " + value);
 			}
 		}
 		catch (NumberFormatException ex) {
@@ -143,15 +143,16 @@ class SpreadSheet {
 	}
 
 	
-	private void readMarks(Sheet sheet,  HashMap<StudentCourse, Marks> marks) {
+	private void readMarks(Sheet sheet,  HashMap<StudentCourse, Marks> marks) throws Exception {
 		List<Integer> markIndexes = null;
 		Integer markIndex = null;
 		try {
-			Row firstRow = sheet.getRow(0);
+			Row firstRow = sheet.getRow(0); // OK  if we tweaked a custom report we 
 			if (isCustomReport) {
 				// NOTE probably need to adjust this each time!!!
-				List<String> markColumnNames = Arrays.asList("Mark1", "Mark2", "Mark3");//, "Mark4");
+				List<String> markColumnNames = Arrays.asList("MarkA", "MarkB", "MarkC");//, "Mark4");
 				markIndexes = markColumnNames.stream().map(colName -> getColumnIndex(colName, firstRow)).collect(toList());
+				System.out.println("Mark indexes: " + markIndexes);
 			}
 			else {
 				markIndex = getColumnIndex("Mark", firstRow);
@@ -175,11 +176,11 @@ class SpreadSheet {
 
 					// Either we're reading a custom report, or a single term file
 					if (isCustomReport) {
-						for (Integer ix : markIndexes) {
-							Integer grade = getIntegerValue(row.getCell(ix));
+						for (int j = 0; j < markIndexes.size(); j++) { //(Integer ix : markIndexes) {
+							Integer grade = getIntegerValue(row.getCell(markIndexes.get(j)));
 							if (grade != null) {
 								try {
-									grades.add(ix, grade);
+									grades.add(j, grade);
 								}
 								catch (Exception e) {
 									System.out.println(e);
@@ -211,18 +212,19 @@ class SpreadSheet {
 		catch (IllegalArgumentException ex) {
 			System.out.println("file headers not named as expected, " + ex);
 		}
-		catch (Exception ex) {
-			System.out.println("oh no " + ex);
-		}
+		// catch (Exception ex) {
+		// 	System.out.println("oh no " + ex);
+		// }
 	}
 
 	public void readMarksFromFile(HashMap<StudentCourse, Marks> marks) {
 		Sheet sheet;
 		try {
 			if (isCustomReport) {
-				sheet = workbook.getSheetAt(0);
+				sheet = workbook.getSheetAt(1);
 			}
-			else {
+			else { // ok we need to tweak this if we diddled a custom report file to get _4
+				// sheet = workbook.getSheetAt(1); 
 				sheet = workbook.getSheet("Grade_Data");
 			}
 			readMarks(sheet, marks);
